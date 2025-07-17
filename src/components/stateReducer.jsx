@@ -3,86 +3,97 @@ export const initialState = {
   currentCustomer: null,
   measurementHistory: {},
   collar: {}, // Store collar details
-  patti: {},  // Store پٹی details
-  cuff: {},   // Store کف details
+  patti: {}, // Store پٹی details
+  cuff: {}, // Store کف details
   pocket: {
     images: {
-      pocketImage: '',     // Main pocket selection
-      sideJaibImage: ''    // Side pocket selection
+      pocketImage: '', // Main pocket selection
+      sideJaibImage: '' // Side pocket selection
     },
     dropdowns: [
       { heading: 'فرنٹ جیب', value: '' },
       { heading: 'جیب سائز', value: '' },
       { heading: 'کندھے سے جیب', value: '' }
     ],
-    styleSelections: []   // Selected style buttons
-  }
-
+    styleSelections: [] // Selected style buttons
+  },
+  کٹر: { selectedButtons: [] } // Store کٹر details, initialized with empty array
 };
 
 export function stateReducer(state, action) {
   switch (action.type) {
-    // ... (keep existing cases like ADD_CUSTOMER, SELECT_CUSTOMER, etc.)
-
-    case 'UPDATE_COLLAR': {
+    case "UPDATE_COLLAR": {
+      const newCollar = { ...state.collar, ...action.payload };
+      if (JSON.stringify(newCollar) === JSON.stringify(state.collar)) {
+        console.log("UPDATE_COLLAR: No change, skipping update");
+        return state;
+      }
       return {
         ...state,
-        collar: {
-          ...state.collar,
-          ...action.payload,
-        },
+        collar: newCollar,
       };
     }
-    
-    case 'UPDATE_PATTI': {
+    case "UPDATE_PATTI": {
+      const newPatti = { ...state.patti, ...action.payload };
+      if (JSON.stringify(newPatti) === JSON.stringify(state.patti)) {
+        console.log("UPDATE_PATTI: No change, skipping update");
+        return state;
+      }
       return {
         ...state,
-        patti: {
-          ...state.patti,
-          ...action.payload,
-        },
+        patti: newPatti,
       };
     }
-
-    case 'UPDATE_CUFF': {
+    case "UPDATE_CUFF": {
+      const newCuff = { ...state.cuff, ...action.payload };
+      if (JSON.stringify(newCuff) === JSON.stringify(state.cuff)) {
+        console.log("UPDATE_CUFF: No change, skipping update");
+        return state;
+      }
       return {
         ...state,
-        cuff: {
-          ...state.cuff,
-          ...action.payload,
-        },
+        cuff: newCuff,
       };
     }
-
-    case 'UPDATE_POCKET': {
+    case "UPDATE_POCKET": {
+      const newPocket = {
+        ...state.pocket,
+        images: { ...state.pocket.images, ...(action.payload.images || {}) },
+        dropdowns: action.payload.dropdowns
+          ? state.pocket.dropdowns.map((item, index) => ({
+              ...item,
+              value: action.payload.dropdowns[index]?.value || item.value,
+            }))
+          : state.pocket.dropdowns,
+        styleSelections: action.payload.styleSelections
+          ? action.payload.styleSelections
+          : state.pocket.styleSelections,
+      };
+      if (JSON.stringify(newPocket) === JSON.stringify(state.pocket)) {
+        console.log("UPDATE_POCKET: No change, skipping update");
+        return state;
+      }
       return {
         ...state,
-        pocket: {
-          // Keep existing pocket data
-          ...state.pocket,
-          // Deep merge for images
-          images: {
-            ...state.pocket.images,
-            ...action.payload.images
-          },
-          // Update dropdowns if provided
-          dropdowns: action.payload.dropdowns 
-            ? state.pocket.dropdowns.map((item, index) => ({
-                ...item,
-                value: action.payload.dropdowns[index]?.value || item.value
-              }))
-            : state.pocket.dropdowns,
-          // Update style selections
-          styleSelections: action.payload.styleSelections 
-            ? action.payload.styleSelections
-            : state.pocket.styleSelections
-        }
+        pocket: newPocket,
       };
     }
-
-    // ... (keep other existing cases)
-
+    case "UPDATE_کٹر": {
+      const newCutter = {
+        ...state.کٹر,
+        selectedButtons: action.payload.selectedButtons || state.کٹر.selectedButtons || []
+      };
+      if (JSON.stringify(newCutter) === JSON.stringify(state.کٹر)) {
+        console.log("UPDATE_کٹر: No change, skipping update");
+        return state;
+      }
+      return {
+        ...state,
+        کٹر: newCutter,
+      };
+    }
     default:
+      console.log(`Unknown action type: ${action.type}`);
       return state;
   }
 }

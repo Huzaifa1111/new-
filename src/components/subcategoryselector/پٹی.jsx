@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, memo } from "react";
 import { HiChevronDown } from "react-icons/hi";
 import PropTypes from "prop-types";
@@ -9,26 +10,30 @@ const translations = {
   buttonsLabel: "بٹنوں کی تعداد",
 };
 
+const pattiImages = [
+  "/assets/gol pati.svg",
+  "/assets/gum pati 2.svg",
+  "/assets/gum pati 3.svg",
+  "/assets/gum pati final.svg",
+  "/assets/gum pati.svg",
+  "/assets/nok pato.svg",
+  "/assets/lopi wai pati.svg",
+];
+
 function پٹی({
   selectedImages = [],
   handleImageClick,
   selectedSubCategory,
   updateViewOrderPatti,
+  formState = {},
 }) {
-  const pattiImages = [
-    "/assets/gol pati.svg",
-    "/assets/gum pati 2.svg",
-    "/assets/gum pati 3.svg",
-    "/assets/gum pati final.svg",
-    "/assets/gum pati.svg",
-    "/assets/nok pato.svg",
-    "/assets/lopi wai pati.svg",
-  ];
+  console.log("پٹی formState:", formState);
 
   const lengthOptions = [
     "5", "5 1/2", "6", "6 1/2", "7", "7 1/2", "8", "8 1/2", "9", "9 1/2",
-    "10", "10 1/2", "11", "11 1/2", "12", "12 1/2", "13", "13 1/2", "14", "14 1/2",
-    "15", "15 1/2", "16", "16 1/2", "17", "17 1/2", "18", "18 1/2", "19", "19 1/2", "20"
+    "10", "10 1/2", "11", "11 1/2", "12", "12 1/2", "13", "13 1/2",
+    "14", "14 1/2", "15", "15 1/2", "16", "16 1/2", "17", "17 1/2",
+    "18", "18 1/2", "19", "19 1/2", "20"
   ];
 
   const widthOptions = ["1/2", "3/4", "1", "1 1/4", "1 1/2", "1 3/4", "2"];
@@ -41,12 +46,22 @@ function پٹی({
     buttons: false,
   });
 
-  const [selectedValues, setSelectedValues] = useState({
-    design: "",
-    length: "",
-    width: "",
-    buttons: "",
-  });
+ const [selectedValues, setSelectedValues] = useState(() => {
+  const initialValues = {
+    design: formState?.design || "",
+    length: formState?.length || "",
+    width: formState?.width || "",
+    buttons: formState?.buttons || "",
+  };
+  console.log("پٹی initial selectedValues:", initialValues);
+  return initialValues;
+});
+
+const [selectedImage, setSelectedImage] = useState(() => {
+  const initialImage = formState?.selectedImage || selectedImages.find(img => img.buttonName === "پٹی")?.imgSrc || "";
+  console.log("پٹی initial selectedImage:", initialImage);
+  return initialImage;
+});
 
   const dropdownRefs = {
     length: useRef(null),
@@ -54,18 +69,45 @@ function پٹی({
     buttons: useRef(null),
   };
 
+  // پٹی.jsx - Update the useEffect that handles data updates
+useEffect(() => {
+  const data = {
+    selectedImage,
+    design: selectedValues.design,
+    length: selectedValues.length,
+    width: selectedValues.width,
+    buttons: selectedValues.buttons,
+  };
+
+  console.log("پٹی updateData:", data);
+  updateViewOrderPatti(data);
+    if (
+      selectedImage !== (formState.patti?.selectedImage || "") ||
+      selectedValues.design !== (formState.patti?.design || "") ||
+      selectedValues.length !== (formState.patti?.length || "") ||
+      selectedValues.width !== (formState.patti?.width || "") ||
+      selectedValues.buttons !== (formState.patti?.buttons || "")
+    ) {
+      updateViewOrderPatti(data);
+     if (selectedImage) {
+    handleImageClick(selectedImage, "پٹی");
+    }
+  }
+}, [selectedValues, selectedImage, updateViewOrderPatti, handleImageClick]);
+
   useEffect(() => {
     const handleClickOutside = (event) => {
-      console.log("Outside click detected in پٹی");
       const newStates = { ...dropdownStates };
       let shouldUpdate = false;
 
       Object.entries(dropdownRefs).forEach(([key, ref]) => {
-        if (ref.current && !ref.current.contains(event.target)) {
-          if (dropdownStates[key]) {
-            newStates[key] = false;
-            shouldUpdate = true;
-          }
+        if (
+          ref.current &&
+          !ref.current.contains(event.target) &&
+          dropdownStates[key]
+        ) {
+          newStates[key] = false;
+          shouldUpdate = true;
         }
       });
 
@@ -80,33 +122,7 @@ function پٹی({
     };
   }, [dropdownStates]);
 
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      const { design, length, width, buttons } = selectedValues;
-      const selectedPattiImage = Array.isArray(selectedImages)
-        ? selectedImages.find((img) => img.buttonName === "پٹی")?.imgSrc || ""
-        : "";
-      console.log("Calling updateViewOrderPatti with:", {
-        selectedImage: selectedPattiImage,
-        design,
-        length,
-        width,
-        buttons,
-      });
-      updateViewOrderPatti({
-        selectedImage: selectedPattiImage,
-        design,
-        length,
-        width,
-        buttons,
-      });
-    }, 300); // Debounce to reduce re-renders
-
-    return () => clearTimeout(handler);
-  }, [selectedValues, selectedImages, updateViewOrderPatti]);
-
   const toggleDropdown = (dropdown) => {
-    console.log(`Toggling dropdown: ${dropdown}`);
     setDropdownStates((prev) => ({
       ...prev,
       [dropdown]: !prev[dropdown],
@@ -114,7 +130,6 @@ function پٹی({
   };
 
   const handleSelect = (dropdown, value) => {
-    console.log(`Selected ${dropdown}: ${value}`);
     setSelectedValues((prev) => ({
       ...prev,
       [dropdown]: value,
@@ -126,26 +141,27 @@ function پٹی({
   };
 
   const handleDesignOptionChange = (option) => {
-    console.log(`Design option changed: ${option}`);
     setSelectedValues((prev) => ({
       ...prev,
-      design: option,
+      design: option === prev.design ? "" : option,
     }));
   };
 
+  const handleImageClickWrapper = (imgSrc) => {
+    const newImage = selectedImage === imgSrc ? "" : imgSrc;
+    setSelectedImage(newImage);
+    handleImageClick(newImage, "پٹی");
+  };
+
   const Dropdown = memo(({ label, options, dropdownKey }) => (
-    <div ref={dropdownRefs[dropdownKey]} className="relative w-full z-[100] pointer-events-auto">
+    <div ref={dropdownRefs[dropdownKey]} className="relative w-full">
       <button
         type="button"
-        data-testid={`dropdown-button-${dropdownKey}`}
-        onClick={(e) => {
-          console.log(`Dropdown button clicked: ${dropdownKey}`);
-          toggleDropdown(dropdownKey);
-        }}
+        onClick={() => toggleDropdown(dropdownKey)}
         aria-expanded={dropdownStates[dropdownKey]}
         aria-controls={`dropdown-${dropdownKey}`}
         aria-haspopup="true"
-        className="flex justify-between items-center w-full h-[3.3rem] px-3 bg-white text-black border border-gray-300 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-green-600 focus-within:ring-2 focus-within:ring-green-600 pointer-events-auto"
+        className="flex justify-between items-center w-full h-[3.3rem] px-3 bg-white text-black border border-gray-300 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-green-600"
       >
         <span>{selectedValues[dropdownKey] || label}</span>
         <HiChevronDown
@@ -158,13 +174,13 @@ function پٹی({
       {dropdownStates[dropdownKey] && (
         <div
           id={`dropdown-${dropdownKey}`}
-          className="absolute z-[100] mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-40 overflow-y-auto pointer-events-auto"
+          className="absolute mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-40 overflow-y-auto z-50"
         >
           {options.map((option, idx) => (
             <button
               key={idx}
               onClick={() => handleSelect(dropdownKey, option)}
-              className="block w-full px-4 py-2 text-right text-gray-700 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none pointer-events-auto"
+              className="block w-full px-4 py-2 text-right text-gray-700 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
             >
               {option}
             </button>
@@ -175,9 +191,8 @@ function پٹی({
   ));
 
   return (
-    <div className="patti-component mt-8 font-nastaliq overflow-visible z-[0]">
+    <div className="patti-component mt-8 font-nastaliq relative z-0">
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        {/* Patti Images */}
         <div className="col-span-3">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full sm:w-96">
             {pattiImages.map((imgSrc, index) => (
@@ -185,22 +200,16 @@ function پٹی({
                 <img
                   src={imgSrc}
                   alt={`پٹی ڈیزائن ${index + 1}`}
-                  className={`w-36 h-24 p-3 cursor-pointer border rounded-3xl object-contain transition-all duration-300 bg-white ${
-                    selectedImages.some(
-                      (img) => img.imgSrc === imgSrc && img.buttonName === "پٹی"
-                    )
-                      ? "border-green-600 border-2"
-                      : "border-white border"
+                  className={`w-36 h-24 p-3 cursor-pointer rounded-3xl object-contain duration-300 bg-white border transition-colors ${
+                    selectedImage === imgSrc ? "border-green-600 border-2" : "border-gray-200"
                   }`}
-                  onClick={() => handleImageClick(imgSrc, selectedSubCategory)}
+                  onClick={() => handleImageClickWrapper(imgSrc)}
                   onError={(e) => {
                     e.target.src = "/fallback-image.jpg";
                     e.target.alt = translations.imageNotAvailable;
                   }}
                 />
-                {selectedImages.some(
-                  (img) => img.imgSrc === imgSrc  === "پٹی"
-                ) && (
+                {selectedImage === imgSrc && (
                   <div className="mt-2 text-center text-sm text-gray-600">
                     {selectedValues.length && (
                       <p>
@@ -212,6 +221,16 @@ function پٹی({
                         چوڑائی: <strong>{selectedValues.width}</strong>
                       </p>
                     )}
+                    {selectedValues.buttons && (
+                      <p>
+                        بٹنوں کی تعداد: <strong>{selectedValues.buttons}</strong>
+                      </p>
+                    )}
+                    {selectedValues.design && (
+                      <p>
+                        ڈیزائن: <strong>{selectedValues.design}</strong>
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
@@ -219,22 +238,17 @@ function پٹی({
           </div>
         </div>
 
-        {/* Dropdowns and Radio Buttons */}
-        <div className="flex flex-col space-y-3 z-[999]">
-          <div className="z-[999]">
+        <div className="flex flex-col space-y-3">
           <Dropdown
             label={translations.lengthLabel}
             options={lengthOptions}
             dropdownKey="length"
           />
-          </div>
-          <div className="z-[555]">
           <Dropdown
             label={translations.widthLabel}
             options={widthOptions}
             dropdownKey="width"
           />
-          </div>
           <Dropdown
             label={translations.buttonsLabel}
             options={buttonCountOptions}
@@ -277,6 +291,7 @@ function پٹی({
   handleImageClick: PropTypes.func.isRequired,
   selectedSubCategory: PropTypes.string.isRequired,
   updateViewOrderPatti: PropTypes.func.isRequired,
+  formState: PropTypes.object,
 };
 
 export default پٹی;

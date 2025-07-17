@@ -1,271 +1,289 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
-const Search = ({ customers, onCreateOrder, onAddCustomer }) => {
+const Search = ({ searchCustomers, onAddCustomer, onCreateOrder, customers, setCustomers }) => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [filteredCustomers, setFilteredCustomers] = useState([]);
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
-  const [showNewCustomerForm, setShowNewCustomerForm] = useState(false);
+  const [searchResults, setSearchResults] = useState([]);
   const [newCustomer, setNewCustomer] = useState({
     name: "",
     phone: "",
     cnic: "",
     bookNo: "",
   });
+  const [showNewCustomerForm, setShowNewCustomerForm] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
 
-  const handleSearchChange = (e) => {
-    const value = e.target.value;
-    setSearchTerm(value);
-    setSelectedCustomer(null);
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
-    if (!value) {
-      setFilteredCustomers([]);
-      setShowNewCustomerForm(false);
-      return;
-    }
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(async () => {
+      setErrors({});
+      if (searchTerm.trim() === "") {
+        console.log("Search term is empty, clearing results");
+        setSearchResults([]);
+        setIsDropdownOpen(false);
+        setShowNewCustomerForm(false);
+        return;
+      }
+      try {
+        console.log(`Searching for customers with query: "${searchTerm}"`);
+        const results = await searchCustomers(searchTerm);
+        console.log("Search results:", results);
+        setSearchResults(Array.isArray(results) ? results : []);
+        setIsDropdownOpen(results.length > 0);
+        setShowNewCustomerForm(results.length === 0);
+      } catch (error) {
+        console.error("Error fetching search results:", error);
+        setSearchResults([]);
+        setIsDropdownOpen(false);
+        setShowNewCustomerForm(true);
+        setErrors({ general: error.message || "Failed to fetch customers" });
+      }
+    }, 500);
 
-    const lowercasedValue = value.toLowerCase();
-    let filtered = [];
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchTerm, searchCustomers]);
 
-    // If the search term is numeric and starts with "0", assume it's a phone search.
-    if (!isNaN(value) && value.startsWith("0")) {
-      filtered = customers.filter(
-        (customer) => customer.phone && customer.phone.startsWith(value)
-      );
-    }
-    // If the search term is numeric (but doesn't start with 0), assume it's a booking number search.
-    else if (!isNaN(value)) {
-      filtered = customers.filter(
-        (customer) =>
-          customer.bookNo &&
-          customer.bookNo.toLowerCase().startsWith(lowercasedValue)
-      );
-    }
-    // Otherwise, for text searches, check if any of the fields start with the search term.
-    else {
-      filtered = customers.filter((customer) =>
-        ["name", "phone", "cnic", "bookNo"].some((key) =>
-          customer[key]?.toLowerCase().startsWith(lowercasedValue)
-        )
-      );
-    }
+  const handleNewCustomerChange = (e) => {
+    const { name, value } = e.target;
+    setNewCustomer((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: "" }));
+  };
 
-    if (filtered.length > 0) {
-      setFilteredCustomers(filtered);
-      setShowNewCustomerForm(false);
+  const handleAddCustomerClick = async () => {
+    const newErrors = {};
+
+    if (!newCustomer.name) {
+      newErrors.name = "Name is required";
     } else {
-      setFilteredCustomers([]);
-      setShowNewCustomerForm(true);
+      const nameRegex = /^[a-zA-Z\s]*$/;
+      if (!nameRegex.test(newCustomer.name)) {
+        newErrors.name = "Name must contain only letters and spaces";
+      }
     }
-  };
 
-  const handleCustomerClick = (customer) => {
-    setSearchTerm(customer.name);
-    setSelectedCustomer(customer);
-    setFilteredCustomers([]);
-    setShowNewCustomerForm(false);
-  };
-
-  const handleCreateOrderClick = () => {
-    if (selectedCustomer) {
-      onCreateOrder(selectedCustomer);
-      setSearchTerm("");
-      setSelectedCustomer(null);
+    if (!newCustomer.phone) {
+      newErrors.phone = "Phone number is required";
+    } else {
+      const phoneRegex = /^\d{10,12}$/;
+      if (!phoneRegex.test(newCustomer.phone)) {
+        newErrors.phone = "Phone number must be 10-12 digits";
+      }
     }
-  };
 
-  const handleAddCustomerClick = () => {
-    if (!newCustomer.name || !newCustomer.phone) {
-      alert("Please enter at least name and phone number");
+    if (!newCustomer.cnic) {
+      newErrors.cnic = "CNIC is required";
+    } else {
+      const cnicRegex = /^\d{13}$/;
+      if (!cnicRegex.test(newCustomer.cnic)) {
+        newErrors.cnic = "CNIC must be 13 digits";
+      }
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
-    const createdCustomer = onAddCustomer(newCustomer);
-    onCreateOrder(createdCustomer);
-    // Reset the new customer form and search
-    setNewCustomer({
-      name: "",
-      phone: "",
-      cnic: "",
-      bookNo: "",
-    });
+
+    const customerData = {
+      name: newCustomer.name,
+      phone: newCustomer.phone,
+      cnic: newCustomer.cnic,
+      bookNo: newCustomer.bookNo || "",
+    };
+
+    try {
+      console.log("Adding new customer:", customerData);
+      const createdCustomer = await onAddCustomer(customerData);
+      console.log("Created customer:", createdCustomer);
+      if (createdCustomer) {
+        setNewCustomer({ name: "", phone: "", cnic: "", bookNo: "" });
+        setSearchTerm("");
+        setShowNewCustomerForm(false);
+        setErrors({});
+        setCustomers((prev) => {
+          if (!prev.some((c) => c._id === createdCustomer._id)) {
+            return [...prev, createdCustomer];
+          }
+          return prev;
+        });
+        onCreateOrder(createdCustomer);
+      }
+    } catch (error) {
+      console.error("Error adding customer:", error);
+      setErrors({ general: error.message || "Failed to add customer" });
+    }
+  };
+
+  const handleCustomerSelect = (customer) => {
+    console.log("Selected customer:", customer);
+    setIsDropdownOpen(false);
     setSearchTerm("");
     setShowNewCustomerForm(false);
+    onCreateOrder(customer);
   };
 
   return (
-    <div className="flex justify-center pt-[25px]">
-      <div className="md:mb-6 mb-3 p-6 rounded-xl space-y-1 w-[322px] md:ml-[5rem] mr-[1px] md:w-[33rem] bg-cardBg border shadow-lg border-gradient">
-        <h1 className="text-2xl font-bold mb-4 text-center text-heading font-font">
-          Search Customer
-        </h1>
-
-        {/* Search Input */}
-        <div className="relative flex justify-center mb-4">
-          <svg
-            className="absolute md:left-4 left-0 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500"
-            aria-hidden="true"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M21.53 20.47l-3.66-3.66C19.195 15.24 20 13.214 20 11c0-4.97-4.03-9-9-9s-9 4.03-9 9 4.03 9 9 9c2.215 0 4.24-.804 5.808-2.13l3.66 3.66c.147.146.34.22.53.22s.385-.073.53-.22c.295-.293.295-.767.002-1.06zM3.5 11c0-4.135 3.365-7.5 7.5-7.5s7.5 3.365 7.5 7.5-3.365 7.5-7.5 7.5-7.5-3.365-7.5-7.5z"
-            />
-          </svg>
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={handleSearchChange}
-            placeholder="Search by name, phone, CNIC, or Booking Number"
-            className="w-[20rem] md:w-[31rem] px-10 py-2 border-customBorder bg-inputBg rounded-xl text-black input-custom border-borderColor font-font"
+    <div className="flex flex-col items-center mb-4 p-6 bg-gray-100 font-font">
+      <h2 className="text-2xl font-bold mb-4 text-heading">Create Order</h2>
+      <div className="relative w-full max-w-md">
+        <svg
+          className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500"
+          aria-hidden="true"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M21.53 20.47l-3.66-3.66C19.195 15.24 20 13.214 20 11c0-4.97-4.03-9-9-9s-9 4.03-9 9 4.03 9 9 9c2.215 0 4.24-.804 5.808-2.13l3.66 3.66c.147.146.34.22.53.22s.385-.073.53-.22c.295-.293.295-.767.002-1.06zM3.5 11c0-4.135 3.365-7.5 7.5-7.5s7.5 3.365 7.5 7.5-3.365 7.5-7.5 7.5-7.5-3.365-7.5-7.5z"
           />
-        </div>
-
-        {/* List of Filtered Customers */}
-        {filteredCustomers.length > 0 && (
-          <div className="bg-white border rounded-3xl mt-2 shadow-lg max-h-40 overflow-auto">
-            {filteredCustomers.map((customer, index) => (
+        </svg>
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Search by name or phone..."
+          className="w-full pl-10 pr-4 py-2 border-customBorder bg-inputBg rounded-xl text-black border border-borderColor input-custom"
+        />
+        {isDropdownOpen && searchResults.length > 0 && (
+          <div
+            ref={dropdownRef}
+            className="absolute w-full max-h-[200px] overflow-y-auto bg-white border border-gray-300 rounded-xl shadow-lg mt-1 z-50"
+          >
+            {searchResults.map((customer) => (
               <div
-                key={customer.id ? customer.id : `${customer.phone}-${index}`}
-                className="p-2 cursor-pointer hover:bg-gray-200"
-                onClick={() => handleCustomerClick(customer)}
+                key={customer._id}
+                className="p-2 hover:bg-gray-100 cursor-pointer text-black"
+                onClick={() => handleCustomerSelect(customer)}
               >
-                {customer.name} - {customer.phone}
+                <span>{customer.name} ({customer.customerId})- ({customer.phone || "No phone"} )</span>
               </div>
             ))}
           </div>
         )}
-
-        {/* Show Create Order button if a customer is selected */}
-        {selectedCustomer && (
-          <div className="flex justify-center mt-4">
-            <button
-              onClick={handleCreateOrderClick}
-              className="w-[14rem] h-[41px] px-4 py-2 text-s text-white transition-all bg-btnBg md:rounded-lg rounded-3xl btn font-font"
-            >
-              Create Order
-            </button>
-          </div>
+        {errors.general && (
+          <p className="text-red-500 text-sm mt-1 text-center">{errors.general}</p>
         )}
-
-        {/* New Customer Form */}
-        {showNewCustomerForm && (
-          <div className="bg-cardBg p-6 border rounded-3xl shadow-lg space-y-4">
-            <h2 className="text-lg font-bold text-center text-heading font-font">
-              No Customer Found
-            </h2>
-            <div className="space-y-4">
-              {/* Name Input Field */}
-              <div className="relative">
-                <input
-                  id="Name"
-                  type="text"
-                  value={newCustomer.name}
-                  onChange={(e) =>
-                    setNewCustomer({ ...newCustomer, name: e.target.value })
-                  }
-                  placeholder=" "
-                  className="input-custom peer w-full px-4 py-2 rounded-xl text-black border border-borderColor"
-                />
-                <label
-                  htmlFor="Name"
-                  className={`absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 transition-all duration-200 ease-in-out bg-cardBg px-1 ${
-                    newCustomer.name
-                      ? "top-[-1px] left-4 text-blue-500"
-                      : "peer-placeholder-shown:top-1/2 peer-placeholder-shown:left-4 peer-placeholder-shown:-translate-y-1/2 peer-focus:top-[-8px] peer-focus:left-4 peer-focus:text-blue-500"
-                  }`}
-                >
-                  Name
-                </label>
-              </div>
-
-              {/* Phone Input Field */}
-              <div className="relative">
-                <input
-                  id="Phone"
-                  type="text"
-                  value={newCustomer.phone}
-                  onChange={(e) =>
-                    setNewCustomer({ ...newCustomer, phone: e.target.value })
-                  }
-                  placeholder=" "
-                  className="input-custom peer w-full px-4 py-2 rounded-xl text-black border border-borderColor"
-                />
-                <label
-                  htmlFor="Phone"
-                  className={`absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 transition-all duration-200 ease-in-out bg-cardBg px-1 ${
-                    newCustomer.phone
-                      ? "top-[-1px] left-4 text-blue-500"
-                      : "peer-placeholder-shown:top-1/2 peer-placeholder-shown:left-4 peer-placeholder-shown:-translate-y-1/2 peer-focus:top-[-8px] peer-focus:left-4 peer-focus:text-blue-500"
-                  }`}
-                >
-                  Phone
-                </label>
-              </div>
-
-              {/* CNIC Input Field */}
-              <div className="relative">
-                <input
-                  id="CNIC"
-                  type="text"
-                  value={newCustomer.cnic}
-                  onChange={(e) =>
-                    setNewCustomer({ ...newCustomer, cnic: e.target.value })
-                  }
-                  placeholder=" "
-                  className="input-custom peer w-full px-4 py-2 rounded-xl text-black border border-borderColor"
-                />
-                <label
-                  htmlFor="CNIC"
-                  className={`absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 transition-all duration-200 ease-in-out bg-cardBg px-1 ${
-                    newCustomer.cnic
-                      ? "top-[-1px] left-4 text-blue-500"
-                      : "peer-placeholder-shown:top-1/2 peer-placeholder-shown:left-4 peer-placeholder-shown:-translate-y-1/2 peer-focus:top-[-8px] peer-focus:left-4 peer-focus:text-blue-500"
-                  }`}
-                >
-                  CNIC
-                </label>
-              </div>
-
-              {/* Booking Number Input Field */}
-              <div className="relative">
-                <input
-                  id="Booking Number"
-                  type="text"
-                  value={newCustomer.bookNo}
-                  onChange={(e) =>
-                    setNewCustomer({ ...newCustomer, bookNo: e.target.value })
-                  }
-                  placeholder=" "
-                  className="input-custom peer w-full px-4 py-2 rounded-xl text-black border border-borderColor"
-                />
-                <label
-                  htmlFor="Booking Number"
-                  className={`absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 transition-all duration-200 ease-in-out bg-cardBg px-1 ${
-                    newCustomer.bookNo
-                      ? "top-[-1px] left-4 text-blue-500"
-                      : "peer-placeholder-shown:top-1/2 peer-placeholder-shown:left-4 peer-placeholder-shown:-translate-y-1/2 peer-focus:top-[-8px] peer-focus:left-4 peer-focus:text-blue-500"
-                  }`}
-                >
-                  Booking Number
-                </label>
-              </div>
+      </div>
+      {showNewCustomerForm && (
+        <div className="mt-4 w-full max-w-md bg-cardBg p-6 border rounded-3xl shadow-lg space-y-4 text-white">
+          <h2 className="text-lg font-bold text-center text-heading font-font">
+            No Customer Found
+          </h2>
+          <div className="space-y-4">
+            <div className="relative">
+              <input
+                id="name"
+                name="name"
+                type="text"
+                value={newCustomer.name}
+                onChange={handleNewCustomerChange}
+                placeholder=" "
+                className="input-custom peer w-full px-4 py-2 rounded-xl text-black border border-borderColor focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <label
+                htmlFor="name"
+                className={`absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 transition-all duration-200 ease-in-out bg-cardBg px-1 ${
+                  newCustomer.name
+                    ? "top-[-8px] text-xs text-blue-500"
+                    : "peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-focus:top-[-8px] peer-focus:text-xs peer-focus:text-blue-500"
+                }`}
+              >
+                Name
+              </label>
+              {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
             </div>
-
-            <div className="flex flex-row justify-center items-center space-x-6 mt-6">
+            <div className="relative">
+              <input
+                id="phone"
+                name="phone"
+                type="text"
+                value={newCustomer.phone}
+                onChange={handleNewCustomerChange}
+                placeholder=" "
+                className="input-custom peer w-full px-4 py-2 rounded-xl text-black border border-borderColor focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <label
+                htmlFor="phone"
+                className={`absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 transition-all duration-200 ease-in-out bg-cardBg px-1 ${
+                  newCustomer.phone
+                    ? "top-[-8px] text-xs text-blue-500"
+                    : "peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-focus:top-[-8px] peer-focus:text-xs peer-focus:text-blue-500"
+                }`}
+              >
+                Phone
+              </label>
+              {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
+            </div>
+            <div className="relative">
+              <input
+                id="cnic"
+                name="cnic"
+                type="text"
+                value={newCustomer.cnic}
+                onChange={handleNewCustomerChange}
+                placeholder=" "
+                className="input-custom peer w-full px-4 py-2 rounded-xl text-black border border-borderColor focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <label
+                htmlFor="cnic"
+                className={`absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 transition-all duration-200 ease-in-out bg-cardBg px-1 ${
+                  newCustomer.cnic
+                    ? "top-[-8px] text-xs text-blue-500"
+                    : "peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-focus:top-[-8px] peer-focus:text-xs peer-focus:text-blue-500"
+                }`}
+              >
+                CNIC
+              </label>
+              {errors.cnic && <p className="text-red-500 text-sm mt-1">{errors.cnic}</p>}
+            </div>
+            <div className="relative">
+              <input
+                id="bookNo"
+                name="bookNo"
+                type="text"
+                value={newCustomer.bookNo}
+                onChange={handleNewCustomerChange}
+                placeholder=" "
+                className="input-custom peer w-full px-4 py-2 rounded-xl text-black border border-borderColor focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <label
+                htmlFor="bookNo"
+                className={`absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 transition-all duration-200 ease-in-out bg-cardBg px-1 ${
+                  newCustomer.bookNo
+                    ? "top-[-8px] text-xs text-blue-500"
+                    : "peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-focus:top-[-8px] peer-focus:text-xs peer-focus:text-blue-500"
+                }`}
+              >
+                Book No (Optional)
+              </label>
+            </div>
+            <div className="flex justify-center mt-6">
               <button
+                type="button"
                 onClick={handleAddCustomerClick}
-                className="w-[14rem] h-[41px] px-4 py-2 text-s text-white transition-all bg-btnBg md:rounded-lg rounded-3xl btn font-font"
+                className="w-[14rem] h-[41px] px-4 py-2 text-sm text-white transition-all bg-btnBg rounded-3xl font-font hover:bg-blue-600"
               >
                 Add New Customer
               </button>
             </div>
+            {errors.general && <p className="text-red-500 text-sm mt-1 text-center">{errors.general}</p>}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

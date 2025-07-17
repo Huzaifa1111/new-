@@ -11,12 +11,12 @@ const MeasurementManager = ({ customer, selectedVariety, formState, onMeasuremen
 
   // Fixed list of garment types (sub‑IDs)
   const subIdOptions = [
-    "shalwar-kameez",
-    "coat",
-    "pant",
-    "waist-coat",
-    "shirt",
-    "pant-coat",
+    shalwaarkameez,
+    coat,
+    pant,
+    waistcoat,
+    shirt,
+    pantcoat,
   ];
 
   // When customer or selectedVariety changes, update the selectedSubId and load its versions.

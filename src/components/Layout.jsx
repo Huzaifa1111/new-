@@ -1,14 +1,17 @@
+
 import React from "react";
 import Sidebar from "../components/Sidebar";
 
-const Layout = ({ children, handleVarietyClick, selectedVariety , }) => {
+const Layout = ({ children, handleVarietyClick, selectedVariety, hideSidebar }) => {
   return (
     <div className="flex-start">
-      <Sidebar  
-        handleVarietyClick={handleVarietyClick} 
-        selectedVariety={selectedVariety} 
-      />
-      <div>{children}</div>
+      {!hideSidebar && (
+        <Sidebar
+          handleVarietyClick={handleVarietyClick}
+          selectedVariety={selectedVariety}
+        />
+      )}
+      <div className="flex-1">{children}</div>
     </div>
   );
 };

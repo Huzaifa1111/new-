@@ -1,4 +1,3 @@
-// tailwind.config.js
 module.exports = {
   content: [
     "./index.html",
@@ -49,10 +48,10 @@ module.exports = {
           "50%": { boxShadow: "0 0 0 10px rgba(0,255,0,0.7)" },
           "100%": { boxShadow: "0 0 0 0 rgba(0,255,0,0)" },
         },
+        
+       
       },
-      animation: {
-        borderPulse: "borderPulse 2s infinite",
-      },
+     
     },
   },
   plugins: [
@@ -171,7 +170,6 @@ module.exports = {
         },
         ".subcat-slidebar": {
           position: "absolute",
-         
           top: "0px",
           left: "0",
           width: "calc(18% + 38px)",
@@ -183,6 +181,7 @@ module.exports = {
           cursor: "pointer",
           pointerEvents: "none",
         },
+        
       });
     },
   ],

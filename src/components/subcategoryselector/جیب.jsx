@@ -1,15 +1,16 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { HiChevronDown } from "react-icons/hi";
 
 function جیب({
   subCategoryImages,
   selectedSubCategory,
   handleImageClick,
-  formState,
+  formState = {},
   updateData,
+  handleButtonClick,
 }) {
-  // Pocket images
-  const pocketImages = subCategoryImages["جیب"] || [
+  // Memoize static data to prevent unnecessary recalculations
+  const pocketImages = useMemo(() => subCategoryImages["جیب"] || [
     "/assets/choras jaib.svg",
     "/assets/cut jaib.svg",
     "/assets/flip jaib choras.svg",
@@ -18,14 +19,11 @@ function جیب({
     "/assets/gol jaib.svg",
     "/assets/no jaib.svg",
     "/assets/nok jaib.svg",
-  ];
+  ], [subCategoryImages]);
 
-  // Side pocket images
-  const sidePocketImages = ["/assets/side jaib 1.svg", "/assets/side jaib 2.svg"];
-
-  // Dropdown Options
-  const numberOfPocketsOptions = ["1 جیب", "2 جیب"];
-  const pocketSizeOptions = [
+  const sidePocketImages = useMemo(() => ["/assets/side jaib 1.svg", "/assets/side jaib 2.svg"], []);
+  const numberOfPocketsOptions = useMemo(() => ["1 جیب", "2 جیب"], []);
+  const pocketSizeOptions = useMemo(() => [
     "3* 3 1/2",
     "3 1/4 * 3 3/4",
     "3 1/2 * 4",
@@ -35,102 +33,125 @@ function جیب({
     "4 1/2 * 5",
     "5* 5 1/2",
     "6* 6 1/2",
-  ];
-  const kandeSeJaibOptions = [
-    "6",
-    "6 1/4",
-    "6 1/2",
-    "6 3/4",
-    "7",
-    "7 1/4",
-    "7 1/2",
-    "7 3/4",
-    "8",
-    "8 1/4",
-    "8 1/2",
-    "8 3/4",
-    "9",
-    "9 1/4",
-    "9 1/2",
-    "9 3/4",
-    "10",
-  ];
+  ], []);
 
-  // State for dropdowns with defaults
-  const [noOfPockets, setNoOfPockets] = useState(
-    formState.pocket?.noOfPockets || numberOfPocketsOptions[0]
-  );
-  const [pocketSize, setPocketSize] = useState(
-    formState.pocket?.pocketSize || pocketSizeOptions[0]
-  );
-  const [kandeSeJaib, setKandeSeJaib] = useState(
-    formState.pocket?.kandeSeJaib || kandeSeJaibOptions[0]
-  );
+  const kandeSeJaibOptions = useMemo(() => [
+    "6", "6 1/4", "6 1/2", "6 3/4", "7", "7 1/4", "7 1/2", "7 3/4", "8",
+    "8 1/4", "8 1/2", "8 3/4", "9", "9 1/4", "9 1/2", "9 3/4", "10",
+  ], []);
 
-  // State for style buttons
-  const [multiSelectButtons, setMultiSelectButtons] = useState(
-    formState.pocket?.styleSelections
-      ? [
-          formState.pocket.styleSelections.includes("کندھے پر شولڈر"),
-          formState.pocket.styleSelections.includes("جیب ک نیچے جیب"),
-          formState.pocket.styleSelections.includes("جیب پر بٹن"),
-        ]
+  const styleLabels = useMemo(() => ["کندھے پر شولڈر", "جیب ک نیچے جیب", "جیب پر بٹن"], []);
+
+  // Initialize state with both image selections
+  const initialState = useMemo(() => ({
+    noOfPockets: formState.noOfPockets || "",
+    pocketSize: formState.pocketSize || "",
+    kandeSeJaib: formState.kandeSeJaib || "",
+    selectedTopImage: formState.pocketImages?.find(img => img.buttonName === "جیب")?.imgSrc || "",
+    selectedRadio: formState.pocketImages?.find(img => img.buttonName === "ہوم سائیڈ جیب")?.imgSrc || "",
+    multiSelectButtons: formState.styleSelections
+      ? styleLabels.map((label) => formState.styleSelections.includes(label))
       : [false, false, false]
-  );
-  const styleLabels = ["کندھے پر شولڈر", "جیب ک نیچے جیب", "جیب پر بٹن"];
+  }), [formState, styleLabels]);
 
-  // State for images with defaults
-  const [selectedTopImage, setSelectedTopImage] = useState(
-    formState.pocket?.pocketImages?.[0]?.imgSrc || pocketImages[0]
-  );
-  const [selectedRadio, setSelectedRadio] = useState(
-    formState.pocket?.pocketImages?.[1]?.imgSrc || sidePocketImages[0]
-  );
+  const [noOfPockets, setNoOfPockets] = useState(initialState.noOfPockets);
+  const [pocketSize, setPocketSize] = useState(initialState.pocketSize);
+  const [kandeSeJaib, setKandeSeJaib] = useState(initialState.kandeSeJaib);
+  const [selectedTopImage, setSelectedTopImage] = useState(initialState.selectedTopImage);
+  const [selectedRadio, setSelectedRadio] = useState(initialState.selectedRadio);
+  const [multiSelectButtons, setMultiSelectButtons] = useState(initialState.multiSelectButtons);
 
-  // Update parent whenever selections change
+   // Update state when formState changes
   useEffect(() => {
-    if (updateData) {
-      const pocketImages = [
-        { imgSrc: selectedTopImage, buttonName: "جیب (اوپر)" },
-        { imgSrc: selectedRadio, buttonName: "جیب (پہلو)" },
-      ];
+    setNoOfPockets(formState.noOfPockets || "");
+    setPocketSize(formState.pocketSize || "");
+    setKandeSeJaib(formState.kandeSeJaib || "");
+    setSelectedTopImage(formState.pocketImages?.find(img => img.buttonName === "جیب")?.imgSrc || "");
+    setSelectedRadio(formState.pocketImages?.find(img => img.buttonName === "ہوم سائیڈ جیب")?.imgSrc || "");
+    setMultiSelectButtons(
+      formState.styleSelections
+        ? styleLabels.map((label) => formState.styleSelections.includes(label))
+        : [false, false, false]
+    );
+  }, [formState, styleLabels]);
+
+   // Handle data updates
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const pocketImagesData = [];
+      
+      // Front pocket image
+      if (selectedTopImage) {
+        pocketImagesData.push({ 
+          imgSrc: selectedTopImage, 
+          buttonName: "جیب",
+          pocketSize,
+          kandeSeJaib,
+          noOfPockets
+        });
+      }
+      
+      // Side pocket image
+      if (selectedRadio) {
+        pocketImagesData.push({ 
+          imgSrc: selectedRadio, 
+          buttonName: "ہوم سائیڈ جیب",
+          pocketSize,
+          kandeSeJaib,
+          noOfPockets
+        });
+      }
 
       const data = {
-        pocketImages,
+        pocketImages: pocketImagesData,
         noOfPockets,
         pocketSize,
         kandeSeJaib,
         styleSelections: styleLabels.filter((_, index) => multiSelectButtons[index]),
+        selectedButton: multiSelectButtons[2] ? "جیب پر بٹن" : "",
       };
 
-      // Log data for debugging
-      console.log("جیب updateData:", data);
-
       updateData("pocket", data);
-    }
+      
+      // Update individual image selections
+      if (selectedTopImage) handleImageClick(selectedTopImage, "جیب");
+      if (selectedRadio) handleImageClick(selectedRadio, "ہوم سائیڈ جیب");
+      if (multiSelectButtons[2]) handleButtonClick("جیب پر بٹن", "pocket");
+    }, 100);
+
+    return () => clearTimeout(timer);
   }, [
-    selectedTopImage,
-    selectedRadio,
-    noOfPockets,
-    pocketSize,
-    kandeSeJaib,
-    multiSelectButtons,
-    updateData,
+    selectedTopImage, 
+    selectedRadio, 
+    noOfPockets, 
+    pocketSize, 
+    kandeSeJaib, 
+    multiSelectButtons, 
+    updateData, 
+    handleImageClick, 
+    handleButtonClick,
+    styleLabels
   ]);
 
-  // Handle style button toggle
-  const toggleStyleButton = (index) => {
+  const toggleStyleButton = useCallback((index) => {
     setMultiSelectButtons((prev) => {
       const newState = [...prev];
       newState[index] = !newState[index];
       return newState;
     });
-  };
+  }, []);
+
+  const handleTopImageClick = useCallback((imgSrc) => {
+    setSelectedTopImage(prev => imgSrc === prev ? "" : imgSrc);
+  }, []);
+
+  const handleRadioClick = useCallback((imgSrc) => {
+    setSelectedRadio(prev => imgSrc === prev ? "" : imgSrc);
+  }, []);
 
   return (
     <div className="mt-8">
       <div className="grid grid-cols-4 gap-2">
-        {/* Pocket Images Grid */}
         <div className="col-span-3">
           <div className="grid grid-cols-3 gap-4">
             {pocketImages.map((imgSrc, index) => (
@@ -139,29 +160,21 @@ function جیب({
                 src={imgSrc}
                 alt={`جیب ${index + 1}`}
                 className={`w-36 h-24 p-3 cursor-pointer border rounded-3xl object-contain transition-all duration-300 bg-white ${
-                  selectedTopImage === imgSrc ? "border-2 border-blue-600" : "border"
+                  selectedTopImage === imgSrc ? "border-2 border-green-600" : "border border-gray-300"
                 }`}
-                onClick={() => {
-                  setSelectedTopImage(imgSrc);
-                  handleImageClick(imgSrc, selectedSubCategory);
-                }}
+                onClick={() => handleTopImageClick(imgSrc)}
               />
             ))}
           </div>
         </div>
-
-        {/* Dropdowns and Style Buttons */}
-        <div className="col-span-1 flex flex-col space-y-4 ml-2">
-          {/* Number of Pockets Dropdown */}
+        <div className="col-span-1 flex flex-col space-y-4 ml-1">
           <div className="relative inline-block w-[8rem]">
             <select
               value={noOfPockets}
               onChange={(e) => setNoOfPockets(e.target.value)}
-              className="block w-[125px] h-[3rem] appearance-none bg-white text-black text-lg font-medium rounded-xl px-2 py-2 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
+              className="block w-[125px] h-[3rem] appearance-none bg-white text-black text-md font-medium rounded-xl px-2 py-2 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
             >
-              <option value="" disabled>
-                فرنٹ جیب
-              </option>
+              <option value="">فرنٹ جیب</option>
               {numberOfPocketsOptions.map((option, index) => (
                 <option key={index} value={option}>
                   {option}
@@ -170,17 +183,13 @@ function جیب({
             </select>
             <HiChevronDown className="pointer-events-none absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-black" />
           </div>
-
-          {/* Pocket Size Dropdown */}
           <div className="relative inline-block w-[8rem]">
             <select
               value={pocketSize}
               onChange={(e) => setPocketSize(e.target.value)}
-              className="block w-[125px] h-[3rem] appearance-none bg-white text-black text-lg font-medium rounded-xl px-2 py-2 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
+              className="block w-[125px] h-[3rem] appearance-none bg-white text-black text-md font-medium rounded-xl px-2 py-2 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
             >
-              <option value="" disabled>
-                جیب سائز
-              </option>
+              <option value="">جیب سائز</option>
               {pocketSizeOptions.map((option, index) => (
                 <option key={index} value={option}>
                   {option}
@@ -189,17 +198,13 @@ function جیب({
             </select>
             <HiChevronDown className="pointer-events-none absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-black" />
           </div>
-
-          {/* Kande Se Jaib Dropdown */}
           <div className="relative inline-block w-[8rem]">
             <select
               value={kandeSeJaib}
               onChange={(e) => setKandeSeJaib(e.target.value)}
-              className="block w-[125px] h-[3rem] appearance-none bg-white text-black text-lg font-medium rounded-xl px-2 py-2 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="block w-[125px] h-[3rem] appearance-none bg-white text-black text-md font-medium rounded-xl px-2 py-2 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="" disabled>
-                کندھے سے جیب
-              </option>
+              <option value="">کندھے سے جیب</option>
               {kandeSeJaibOptions.map((option, index) => (
                 <option key={index} value={option}>
                   {option}
@@ -208,8 +213,6 @@ function جیب({
             </select>
             <HiChevronDown className="pointer-events-none absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-black" />
           </div>
-
-          {/* Style Buttons */}
           <div className="flex justify-center my-2">
             <h1 className="text-heading text-lg">Select Style</h1>
           </div>
@@ -218,9 +221,9 @@ function جیب({
               <button
                 key={index}
                 onClick={() => toggleStyleButton(index)}
-                className={`w-[126px] h-10 border rounded-lg text-lg font-medium transition-all duration-200 ${
+                className={`w-[126px] h-10 border rounded-lg text-md font-medium transition-all duration-200 ${
                   multiSelectButtons[index]
-                    ? "bg-blue-600 text-white"
+                    ? "bg-green-600 text-white"
                     : "bg-white text-gray-700 hover:bg-blue-50"
                 }`}
               >
@@ -230,8 +233,6 @@ function جیب({
           </div>
         </div>
       </div>
-
-      {/* Side Pocket Selection */}
       <div>
         <h4 className="text-base font-semibold mb-2 text-center text-heading">
           Select One
@@ -243,9 +244,9 @@ function جیب({
               src={imgSrc}
               alt={`Side Jaib ${index + 1}`}
               className={`w-24 h-24 p-2 bg-white cursor-pointer border rounded-lg object-contain transition-all duration-300 ${
-                selectedRadio === imgSrc ? "border-2 border-green-600" : "border"
+                selectedRadio === imgSrc ? "border-2 border-green-600" : "border border-gray-300"
               }`}
-              onClick={() => setSelectedRadio(imgSrc)}
+              onClick={() => handleRadioClick(imgSrc)}
             />
           ))}
         </div>

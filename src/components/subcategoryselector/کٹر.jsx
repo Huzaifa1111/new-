@@ -1,42 +1,56 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 
-function کٹر({ selectedSubCategory, handleButtonClick, formState = {}, updateData }) {
-  const cutterButtonNames = [
-    "کرتا بنانا ہے درزو والا",
-    "آستین اوپر سے فٹ",
-    "آستین اوپر سے زیادہ فٹ",
-    "آستین نیچے سے لوز ہو",
-    "2 درزی شلوار",
-    "6 درزی شلوار",
-    "شلوار لوز",
-    "شلوار زیادہ لوز",
-    "شلوار اوپر سے کم",
-    "پینٹ شلوار",
-    "شرنک کرنا ہے",
-    "لیبل نہیں لگانا",
-    "دامن گول",
-    "دامن چورس",
-  ];
+const cutterButtonNames = [
+  "کرتا بنانا ہے درزو والا",
+  "آستین اوپر سے فٹ",
+  "آستین اوپر سے زیادہ فٹ",
+  "آستین نیچے سے لوز ہو",
+  "2 درزی شلوار",
+  "6 درزی شلوار",
+  "شلوار لوز",
+  "شلوار زیادہ لوز",
+  "شلوار اوپر سے کم",
+  "پینٹ شلوار",
+  "شرنک کرنا ہے",
+  "لیبل نہیں لگانا",
+  "دامن گول",
+  "دامن چورس",
+];
 
-  // Initialize localSelected from formState.cutter
-  const initialSelected = cutterButtonNames.map((name) =>
-    formState.cutter?.selectedButtons?.includes(name) || false
-  );
-  const [localSelected, setLocalSelected] = useState(initialSelected);
+function کٹر({ selectedSubCategory, formState = {}, updateData }) {
+  // Memoize the initial selection to prevent unnecessary recalculations
+  const initialSelection = useMemo(() => {
+    return formState.selectedButtons
+      ? cutterButtonNames.map((name) => formState.selectedButtons.includes(name))
+      : new Array(cutterButtonNames.length).fill(false);
+  }, [formState.selectedButtons]);
 
-  // Update parent on selection change
+  const [localSelected, setLocalSelected] = useState(initialSelection);
+
+  // Only update when formState.selectedButtons actually changes
   useEffect(() => {
-    if (updateData) {
-      const selectedButtons = cutterButtonNames.filter((_, index) => localSelected[index]);
-      const data = { selectedButtons };
-      console.log("کٹر updateData:", data);
-      updateData("cutter", data);
-      // Notify parent for compatibility with existing handleButtonClick
-      handleButtonClick(selectedButtons.length > 0 ? "selected" : null, selectedSubCategory);
+    if (formState.selectedButtons) {
+      const newSelection = cutterButtonNames.map((name) => 
+        formState.selectedButtons.includes(name)
+      );
+      setLocalSelected(newSelection);
     }
-  }, [localSelected, updateData, handleButtonClick, selectedSubCategory, cutterButtonNames]);
+  }, [formState.selectedButtons]);
 
-  // Toggle the selection status of a button
+  // Debounce the updateData call to prevent rapid successive updates
+  useEffect(() => {
+    const selectedButtons = cutterButtonNames.filter((_, index) => localSelected[index]);
+    
+    // Only update if there's an actual change
+    if (JSON.stringify(selectedButtons) !== JSON.stringify(formState.selectedButtons || [])) {
+      const timer = setTimeout(() => {
+        updateData("cutter", { selectedButtons });
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [localSelected, updateData, formState.selectedButtons]);
+
   const toggleButton = (index) => {
     setLocalSelected((prev) => {
       const newState = [...prev];
@@ -44,6 +58,11 @@ function کٹر({ selectedSubCategory, handleButtonClick, formState = {}, update
       return newState;
     });
   };
+
+  // Memoize the selected names to prevent unnecessary recalculations
+  const selectedNames = useMemo(() => {
+    return cutterButtonNames.filter((_, index) => localSelected[index]);
+  }, [localSelected]);
 
   return (
     <div className="mt-8 flex flex-col items-center font-nastaliq">
@@ -53,9 +72,9 @@ function کٹر({ selectedSubCategory, handleButtonClick, formState = {}, update
           <button
             key={index}
             onClick={() => toggleButton(index)}
-            className={`w-[172px] h-12 cursor-pointer text-lg border rounded-xl transition-all duration-300 bg-white hover:shadow-xl ${
+            className={`w-[172px] h-12 cursor-pointer text-md border rounded-xl transition-all duration-300 bg-white hover:shadow-xl ${
               localSelected[index]
-                ? "border-2 border-green-600 bg-green-600 text-black"
+                ? "border-2 border-green-600 bg-green-100 text-black"
                 : "border border-gray-300"
             }`}
           >
@@ -63,10 +82,9 @@ function کٹر({ selectedSubCategory, handleButtonClick, formState = {}, update
           </button>
         ))}
       </div>
-      {/* Display current selections */}
-      {localSelected.some((selected) => selected) && (
+      {selectedNames.length > 0 && (
         <div className="text-center text-green-600 font-semibold mt-4">
-          Selected: {cutterButtonNames.filter((_, index) => localSelected[index]).join(", ")}
+          Selected: {selectedNames.join(", ")}
         </div>
       )}
     </div>

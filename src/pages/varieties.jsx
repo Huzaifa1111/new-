@@ -12,9 +12,9 @@ function Varieties() {
 
   const measurementFields = {
     Pant: ["Waist", "Length", "Thigh", "Bottom"],
-    PantShirt: ["Chest", "Shoulder", "Sleeve", "Length"],
-    WaistCoat: ["Chest", "Shoulder", "Waist", "Length"],
-    SK: ["Chest", "Shoulder", "Sleeve", "Length", "Shalwaar Length"],
+    Pantshirt: ["Chest", "Shoulder", "Sleeve", "Length"],
+    Waistcoat: ["Chest", "Shoulder", "Waist", "Length"],
+    Shalwaarkameez: ["Chest", "Shoulder", "Sleeve", "Length", "Shalwaar Length"],
     Coat: ["Chest", "Shoulder", "Sleeve", "Length", "Waist"],
   };
 
